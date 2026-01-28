@@ -70,23 +70,26 @@ export async function fetchGitLabMRData(
     token,
   });
 
-  // Fetch MR details, changes, and discussions in parallel
-  const [mrDetails, mrChanges, discussions] = await Promise.all([
+  // Fetch MR details with changes included, and discussions in parallel
+  const [mrDetails, discussions] = await Promise.all([
     api.MergeRequests.show(
       context.projectId,
       parseInt(context.mrIid),
     ) as Promise<unknown>,
-    (api as any).requester.get(
-      `/projects/${context.projectId}/merge_requests/${parseInt(context.mrIid)}/changes`,
-    ) as Promise<GitLabMergeRequestChanges>,
     api.MergeRequestDiscussions.all(
       context.projectId,
       parseInt(context.mrIid),
     ) as Promise<unknown>,
   ]);
+  
+  // Fetch changes separately using the correct API method
+  const mrChanges = await api.MergeRequests.changes(
+    context.projectId,
+    parseInt(context.mrIid),
+  ) as Promise<unknown>;
 
   const typedMrDetails = mrDetails as unknown as GitLabMergeRequest;
-  const typedMrChanges = mrChanges as GitLabMergeRequestChanges;
+  const typedMrChanges = (await mrChanges) as unknown as GitLabMergeRequestChanges;
   const typedDiscussions = discussions as unknown as GitLabDiscussion[];
 
   return {
