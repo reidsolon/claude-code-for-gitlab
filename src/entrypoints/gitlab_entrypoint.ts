@@ -432,11 +432,10 @@ async function runUpdatePhase(
       OUTPUT_FILE: executeResult.outputFile || getClaudeExecutionOutputPath(),
     };
 
-    // If we're in issue context, ensure CI_ISSUE_IID is set
-    if (
-      process.env.CLAUDE_RESOURCE_TYPE === "issue" &&
-      process.env.CLAUDE_RESOURCE_ID
-    ) {
+    // Set correct IID based on resource type
+    if (process.env.CLAUDE_RESOURCE_TYPE === "merge_request" && process.env.CLAUDE_RESOURCE_ID) {
+      (env as any).CI_MERGE_REQUEST_IID = process.env.CLAUDE_RESOURCE_ID;
+    } else if (process.env.CLAUDE_RESOURCE_TYPE === "issue" && process.env.CLAUDE_RESOURCE_ID) {
       (env as any).CI_ISSUE_IID = process.env.CLAUDE_RESOURCE_ID;
     }
 
