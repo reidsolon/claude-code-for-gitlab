@@ -89,13 +89,9 @@ async function runExecutePhase(
     console.log("Phase 2: Installing Claude Code...");
     console.log("=========================================");
 
-    // Remove any cached version first
-    await $`bun remove -g @anthropic-ai/claude-code`.quiet().nothrow();
-    
-    // Install Claude Code globally with specific version
-    console.log("Installing @anthropic-ai/claude-code@latest...");
+    // Install Claude Code globally (use latest version)
     const installResult =
-      await $`bun install -g @anthropic-ai/claude-code@latest --force`;
+      await $`bun install -g @anthropic-ai/claude-code@latest`;
     console.log(installResult.stdout.toString());
 
     if (installResult.exitCode !== 0) {
@@ -103,27 +99,6 @@ async function runExecutePhase(
         `Failed to install Claude Code: ${installResult.stderr.toString()}`,
       );
     }
-    
-    // Verify installation
-    const versionResult = await $`claude --version`.nothrow();
-    const installedVersion = versionResult.stdout.toString().trim();
-    console.log(`Installed Claude Code version: ${installedVersion}`);
-    
-    // If still on old version, try update command
-    if (installedVersion.includes('1.0.60')) {
-      console.log("Old version detected (1.0.60), attempting auto-update...");
-      const updateResult = await $`claude update --yes`.nothrow();
-      if (updateResult.exitCode === 0) {
-        console.log("Update successful!");
-        const newVersionResult = await $`claude --version`.nothrow();
-        console.log(`Updated to: ${newVersionResult.stdout.toString().trim()}`);
-      } else {
-        console.warn("Auto-update failed, but continuing anyway...");
-        console.warn(updateResult.stderr.toString());
-      }
-    }
-    
-    console.log("Claude Code installation complete");
 
     console.log("=========================================");
     console.log("Phase 3: Installing base-action dependencies...");
