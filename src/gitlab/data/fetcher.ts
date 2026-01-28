@@ -70,7 +70,7 @@ export async function fetchGitLabMRData(
     token,
   });
 
-  // Fetch MR details with changes included, and discussions in parallel
+  // Fetch MR details and discussions in parallel
   const [mrDetails, discussions] = await Promise.all([
     api.MergeRequests.show(
       context.projectId,
@@ -82,14 +82,24 @@ export async function fetchGitLabMRData(
     ) as Promise<unknown>,
   ]);
   
-  // Fetch changes separately using the correct API method
-  const mrChanges = await api.MergeRequests.changes(
-    context.projectId,
-    parseInt(context.mrIid),
-  ) as Promise<unknown>;
+  // Fetch changes using direct fetch with proper auth headers
+  const changesUrl = `${context.host}/api/v4/projects/${context.projectId}/merge_requests/${parseInt(context.mrIid)}/changes`;
+  console.log(`Fetching MR changes from: ${changesUrl}`);
+  
+  const changesResponse = await fetch(changesUrl, {
+    headers: {
+      'PRIVATE-TOKEN': token,
+    },
+  });
+  
+  if (!changesResponse.ok) {
+    throw new Error(`Failed to fetch MR changes: ${changesResponse.status} ${changesResponse.statusText}`);
+  }
+  
+  const mrChanges = await changesResponse.json();
 
   const typedMrDetails = mrDetails as unknown as GitLabMergeRequest;
-  const typedMrChanges = (await mrChanges) as unknown as GitLabMergeRequestChanges;
+  const typedMrChanges = mrChanges as GitLabMergeRequestChanges;
   const typedDiscussions = discussions as unknown as GitLabDiscussion[];
 
   return {
