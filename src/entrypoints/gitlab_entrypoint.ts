@@ -193,32 +193,51 @@ async function runExecutePhase(
           fs.mkdirSync(outputDir, { recursive: true });
         }
         
-        // Extract JSON objects from stdout (they are pretty-printed, so we need to find complete objects)
+        // Extract JSON objects from stdout (handles both JSONL and pretty-printed JSON)
         const jsonObjects: string[] = [];
         let depth = 0;
         let currentObject = "";
         let inObject = false;
-        
+        let inString = false;
+        let escapeNext = false;
+
         for (const char of stdout) {
-          if (char === '{' && !inObject) {
+          // Handle string escaping to avoid counting braces inside strings
+          if (escapeNext) {
+            if (inObject) currentObject += char;
+            escapeNext = false;
+            continue;
+          }
+          if (char === '\\' && inString) {
+            if (inObject) currentObject += char;
+            escapeNext = true;
+            continue;
+          }
+          if (char === '"' && !escapeNext) {
+            inString = !inString;
+          }
+
+          if (char === '{' && !inString && !inObject) {
             inObject = true;
             depth = 1;
             currentObject = char;
           } else if (inObject) {
             currentObject += char;
-            if (char === '{') depth++;
-            else if (char === '}') {
-              depth--;
-              if (depth === 0) {
-                // Complete object found
-                try {
-                  JSON.parse(currentObject);
-                  jsonObjects.push(currentObject);
-                } catch {
-                  // Not valid JSON, skip
+            if (!inString) {
+              if (char === '{') depth++;
+              else if (char === '}') {
+                depth--;
+                if (depth === 0) {
+                  // Complete object found
+                  try {
+                    JSON.parse(currentObject);
+                    jsonObjects.push(currentObject);
+                  } catch {
+                    // Not valid JSON, skip
+                  }
+                  inObject = false;
+                  currentObject = "";
                 }
-                inObject = false;
-                currentObject = "";
               }
             }
           }
@@ -357,39 +376,79 @@ async function postClaudeResponse(
 
     try {
       const outputContent = await fs.promises.readFile(outputPath, "utf-8");
-
-      // Parse the JSONL output (multiple JSON objects separated by newlines)
-      const lines = outputContent.trim().split("\n");
       let claudeMessage = "";
 
-      // Process each line as a separate JSON object
-      for (const line of lines) {
-        if (!line.trim()) continue;
+      // Extract JSON objects from content (handles both JSONL and pretty-printed JSON)
+      const jsonObjects: object[] = [];
+      let depth = 0;
+      let currentObject = "";
+      let inObject = false;
+      let inString = false;
+      let escapeNext = false;
 
-        try {
-          const output = JSON.parse(line);
+      for (const char of outputContent) {
+        // Handle string escaping to avoid counting braces inside strings
+        if (escapeNext) {
+          if (inObject) currentObject += char;
+          escapeNext = false;
+          continue;
+        }
+        if (char === '\\' && inString) {
+          if (inObject) currentObject += char;
+          escapeNext = true;
+          continue;
+        }
+        if (char === '"' && !escapeNext) {
+          inString = !inString;
+        }
 
-          // Look for the result in the final result object
-          if (output.type === "result" && output.result) {
-            claudeMessage = output.result;
-            break;
-          }
-
-          // Also check assistant messages
-          if (output.type === "assistant" && output.message?.content) {
-            let tempMessage = "";
-            for (const content of output.message.content) {
-              if (content.type === "text") {
-                tempMessage += content.text + "\n";
+        if (char === '{' && !inString && !inObject) {
+          inObject = true;
+          depth = 1;
+          currentObject = char;
+        } else if (inObject) {
+          currentObject += char;
+          if (!inString) {
+            if (char === '{') depth++;
+            else if (char === '}') {
+              depth--;
+              if (depth === 0) {
+                // Complete object found
+                try {
+                  const parsed = JSON.parse(currentObject);
+                  jsonObjects.push(parsed);
+                } catch {
+                  // Not valid JSON, skip
+                }
+                inObject = false;
+                currentObject = "";
               }
             }
-            if (tempMessage) {
-              claudeMessage = tempMessage.trim();
+          }
+        }
+      }
+
+      console.log(`Parsed ${jsonObjects.length} JSON objects from output`);
+
+      // Process each JSON object
+      for (const output of jsonObjects) {
+        // Look for the result in the final result object
+        if ((output as any).type === "result" && (output as any).result) {
+          claudeMessage = (output as any).result;
+          break;
+        }
+
+        // Also check assistant messages
+        if ((output as any).type === "assistant" && (output as any).message?.content) {
+          let tempMessage = "";
+          for (const content of (output as any).message.content) {
+            if (content.type === "text") {
+              tempMessage += content.text + "\n";
             }
           }
-        } catch (parseError) {
-          console.error("Error parsing line:", parseError);
-          continue;
+          if (tempMessage) {
+            claudeMessage = tempMessage.trim();
+          }
         }
       }
 
