@@ -193,24 +193,41 @@ async function runExecutePhase(
           fs.mkdirSync(outputDir, { recursive: true });
         }
         
-        // Filter stdout to only include valid JSON lines
-        const jsonLines = stdout.split('\n')
-          .filter(line => {
-            const trimmed = line.trim();
-            return trimmed.startsWith('{') || trimmed.startsWith('[');
-          })
-          .filter(line => {
-            try {
-              JSON.parse(line);
-              return true;
-            } catch {
-              return false;
-            }
-          })
-          .join('\n');
+        // Extract JSON objects from stdout (they are pretty-printed, so we need to find complete objects)
+        const jsonObjects: string[] = [];
+        let depth = 0;
+        let currentObject = "";
+        let inObject = false;
         
+        for (const char of stdout) {
+          if (char === '{' && !inObject) {
+            inObject = true;
+            depth = 1;
+            currentObject = char;
+          } else if (inObject) {
+            currentObject += char;
+            if (char === '{') depth++;
+            else if (char === '}') {
+              depth--;
+              if (depth === 0) {
+                // Complete object found
+                try {
+                  JSON.parse(currentObject);
+                  jsonObjects.push(currentObject);
+                } catch {
+                  // Not valid JSON, skip
+                }
+                inObject = false;
+                currentObject = "";
+              }
+            }
+          }
+        }
+        
+        // Join as JSONL (one object per line)
+        const jsonLines = jsonObjects.join('\n');
         await fs.promises.writeFile(actualOutputFile, jsonLines, "utf-8");
-        console.log(`Saved ${jsonLines.split('\n').length} JSON lines to ${actualOutputFile}`);
+        console.log(`Saved ${jsonObjects.length} JSON objects to ${actualOutputFile}`);
       } catch (saveError) {
         console.error("Error saving stdout:", saveError);
       }
