@@ -106,7 +106,22 @@ async function runExecutePhase(
     
     // Verify installation
     const versionResult = await $`claude --version`.nothrow();
-    console.log(`Installed Claude Code version: ${versionResult.stdout.toString().trim()}`);
+    const installedVersion = versionResult.stdout.toString().trim();
+    console.log(`Installed Claude Code version: ${installedVersion}`);
+    
+    // If still on old version, try update command
+    if (installedVersion.includes('1.0.60')) {
+      console.log("Old version detected (1.0.60), attempting auto-update...");
+      const updateResult = await $`claude update --yes`.nothrow();
+      if (updateResult.exitCode === 0) {
+        console.log("Update successful!");
+        const newVersionResult = await $`claude --version`.nothrow();
+        console.log(`Updated to: ${newVersionResult.stdout.toString().trim()}`);
+      } else {
+        console.warn("Auto-update failed, but continuing anyway...");
+        console.warn(updateResult.stderr.toString());
+      }
+    }
     
     console.log("Claude Code installation complete");
 
