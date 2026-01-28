@@ -69,7 +69,7 @@ claude_webhook_handler:
     echo "========================================="
     echo "Step 2: Installing Claude Code..."
     echo "========================================="
-    bun install -g @anthropic-ai/claude-code@1.0.60
+    bun install -g @anthropic-ai/claude-code@latest
 
     # Step 3: Install base-action dependencies
     echo "========================================="
