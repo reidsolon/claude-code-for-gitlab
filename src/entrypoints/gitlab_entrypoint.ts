@@ -193,6 +193,12 @@ async function runExecutePhase(
 
 async function checkGitStatus(): Promise<boolean> {
   try {
+    // Ensure we're in the project directory
+    const projectDir = process.env.CI_PROJECT_DIR || process.env.PWD;
+    if (projectDir) {
+      process.chdir(projectDir);
+    }
+    
     // Clean up any temporary output files before checking git status
     // These files might be created by Claude Code during execution
     const tempFiles = ["output.txt", "*.log", "*.tmp"];
@@ -205,7 +211,12 @@ async function checkGitStatus(): Promise<boolean> {
     }
 
     const result = await $`git status --porcelain`.quiet();
-    return result.stdout.toString().trim().length > 0;
+    const statusOutput = result.stdout.toString().trim();
+    console.log(`Git status check: ${statusOutput.length > 0 ? 'changes detected' : 'no changes'}`);
+    if (statusOutput) {
+      console.log(`Changed files:\n${statusOutput}`);
+    }
+    return statusOutput.length > 0;
   } catch (error) {
     console.error("Error checking git status:", error);
     return false;
@@ -220,6 +231,17 @@ async function createMergeRequest(
     console.log("=========================================");
     console.log("Creating GitLab Merge Request...");
     console.log("=========================================");
+
+    // Ensure we're in the project directory, not the temp claude-code directory
+    const projectDir = process.env.CI_PROJECT_DIR || process.env.PWD;
+    if (!projectDir) {
+      throw new Error("Could not determine project directory (CI_PROJECT_DIR not set)");
+    }
+    
+    console.log(`Working in project directory: ${projectDir}`);
+    
+    // Change to project directory
+    process.chdir(projectDir);
 
     // Get branch name based on context
     const timestamp = Date.now();
