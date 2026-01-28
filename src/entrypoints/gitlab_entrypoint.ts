@@ -281,13 +281,6 @@ ${diff.split('\n').filter(line => line.startsWith('diff --git')).length} file(s)
     throw error;
   }
 }
-      }
-    }
-  } catch (error) {
-    console.error("Error creating merge request:", error);
-    throw error;
-  }
-}
 
 async function postClaudeResponse(
   _prepareResult: PhaseResult,
