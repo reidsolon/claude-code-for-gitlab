@@ -61,6 +61,10 @@ export async function fetchGitLabMRData(
     throw new Error("Merge request IID is required to fetch MR data");
   }
 
+  console.log(`Fetching MR data with token length: ${token.length}, prefix: ${token.substring(0, 8)}...`);
+  console.log(`MR IID: ${context.mrIid}, Project ID: ${context.projectId}`);
+  console.log(`Host: ${context.host}`);
+
   const api = new Gitlab({
     host: context.host,
     token,
