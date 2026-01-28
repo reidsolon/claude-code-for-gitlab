@@ -120,29 +120,39 @@ async function run() {
       let resourceType: string;
       let resourceIid: number;
 
+      console.log(`Looking for comment ${commentId} in project ${projectId}`);
+      console.log(`MR IID: ${mrIid}, Issue IID: ${issueIid}`);
+      console.log(`Resource type from CLAUDE_RESOURCE_TYPE: ${process.env.CLAUDE_RESOURCE_TYPE}`);
+
       if (mrIid) {
         // Merge request context
+        console.log(`Fetching notes from MR ${mrIid}...`);
         notes = (await api.MergeRequestNotes.all(
           projectId,
           parseInt(mrIid),
         )) as unknown as GitLabNote[];
         resourceType = "merge request";
         resourceIid = parseInt(mrIid);
+        console.log(`Found ${notes.length} notes in MR`);
       } else if (issueIid) {
         // Issue context
+        console.log(`Fetching notes from issue ${issueIid}...`);
         notes = (await api.IssueNotes.all(
           projectId,
           parseInt(issueIid),
         )) as unknown as GitLabNote[];
         resourceType = "issue";
         resourceIid = parseInt(issueIid);
+        console.log(`Found ${notes.length} notes in issue`);
       } else {
         throw new Error("No merge request or issue context found");
       }
 
       const originalComment = notes.find((note) => note.id === commentId);
       if (!originalComment) {
-        throw new Error(`Could not find GitLab note ID ${commentId}`);
+        console.warn(`Could not find comment ${commentId}. Available note IDs: ${notes.map(n => n.id).join(', ')}`);
+        console.warn(`Skipping comment update - comment may have been deleted or is in a different resource`);
+        return; // Exit gracefully instead of failing
       }
 
       // Get job URL
