@@ -252,8 +252,19 @@ See the original ${process.env.CLAUDE_RESOURCE_TYPE} for context.`;
     await $`git commit -m ${commitMessage}`.quiet();
     console.log("Committed changes");
 
-    // Push with GitLab push options to create MR
-    const targetBranch = process.env.CI_DEFAULT_BRANCH || "main";
+    // Determine target branch based on context
+    let targetBranch: string;
+    
+    if (process.env.CLAUDE_RESOURCE_TYPE === "merge_request") {
+      // For MRs, target the MR's source branch so changes can be added to it
+      targetBranch = process.env.CLAUDE_BRANCH || process.env.CI_COMMIT_REF_NAME || process.env.CI_DEFAULT_BRANCH || "main";
+      console.log(`Targeting MR source branch: ${targetBranch}`);
+    } else {
+      // For issues, target the default branch
+      targetBranch = process.env.CI_DEFAULT_BRANCH || "main";
+      console.log(`Targeting default branch: ${targetBranch}`);
+    }
+    
     const mrTitle = `Apply Claude's suggestions for ${process.env.CLAUDE_RESOURCE_TYPE} #${process.env.CLAUDE_RESOURCE_ID}`;
 
     // GitLab push options cannot contain newlines, so we'll use a simpler description
