@@ -167,19 +167,26 @@ async function runExecutePhase(
     const executeResult = await $`bun run ${baseActionScript}`.env(env).quiet();
 
     // Print output regardless of exit code
-    console.log(executeResult.stdout.toString());
+    const stdout = executeResult.stdout.toString();
+    console.log(stdout);
     if (executeResult.stderr.toString()) {
       console.error(executeResult.stderr.toString());
     }
 
-    const outputFile = getClaudeExecutionOutputPath();
+    // Try to extract the actual execution file path from base-action output
+    let actualOutputFile = getClaudeExecutionOutputPath();
+    const executionFileMatch = stdout.match(/::set-output name=execution_file::(.+)/);
+    if (executionFileMatch) {
+      actualOutputFile = executionFileMatch[1].trim();
+      console.log(`Captured execution file path: ${actualOutputFile}`);
+    }
 
     return {
       success: executeResult.exitCode === 0,
       error:
         executeResult.exitCode !== 0 ? "Claude execution failed" : undefined,
       commentId: prepareResult.commentId,
-      outputFile,
+      outputFile: actualOutputFile,
     };
   } catch (error) {
     console.error("Error in execute phase:", error);
