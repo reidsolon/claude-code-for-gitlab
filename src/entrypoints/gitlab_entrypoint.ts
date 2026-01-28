@@ -181,6 +181,23 @@ async function runExecutePhase(
       console.log(`Captured execution file path: ${actualOutputFile}`);
     }
 
+    // Save the raw stdout as execution output if the file doesn't exist
+    // (This happens when jq is not available to process output.txt)
+    const fs = await import("fs");
+    if (!fs.existsSync(actualOutputFile)) {
+      console.log("Execution file not found, capturing from stdout...");
+      try {
+        const outputDir = path.dirname(actualOutputFile);
+        if (!fs.existsSync(outputDir)) {
+          fs.mkdirSync(outputDir, { recursive: true });
+        }
+        await fs.promises.writeFile(actualOutputFile, stdout, "utf-8");
+        console.log(`Saved stdout to ${actualOutputFile}`);
+      } catch (saveError) {
+        console.error("Error saving stdout:", saveError);
+      }
+    }
+
     return {
       success: executeResult.exitCode === 0,
       error:
