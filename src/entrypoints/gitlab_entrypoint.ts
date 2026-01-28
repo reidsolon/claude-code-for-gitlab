@@ -177,6 +177,7 @@ async function runExecutePhase(
     let actualOutputFile = getClaudeExecutionOutputPath();
     const executionFileMatch = stdout.match(/::set-output name=execution_file::(.+)/);
     if (executionFileMatch) {
+      // @ts-ignore
       actualOutputFile = executionFileMatch[1].trim();
       console.log(`Captured execution file path: ${actualOutputFile}`);
     }
@@ -191,8 +192,25 @@ async function runExecutePhase(
         if (!fs.existsSync(outputDir)) {
           fs.mkdirSync(outputDir, { recursive: true });
         }
-        await fs.promises.writeFile(actualOutputFile, stdout, "utf-8");
-        console.log(`Saved stdout to ${actualOutputFile}`);
+        
+        // Filter stdout to only include valid JSON lines
+        const jsonLines = stdout.split('\n')
+          .filter(line => {
+            const trimmed = line.trim();
+            return trimmed.startsWith('{') || trimmed.startsWith('[');
+          })
+          .filter(line => {
+            try {
+              JSON.parse(line);
+              return true;
+            } catch {
+              return false;
+            }
+          })
+          .join('\n');
+        
+        await fs.promises.writeFile(actualOutputFile, jsonLines, "utf-8");
+        console.log(`Saved ${jsonLines.split('\n').length} JSON lines to ${actualOutputFile}`);
       } catch (saveError) {
         console.error("Error saving stdout:", saveError);
       }
