@@ -28,8 +28,23 @@ export function parseGitLabContext(
 ): ParsedGitLabContext {
   // Use provided options or fall back to environment variables
   const projectId = opts.projectId ?? process.env.CI_PROJECT_ID;
-  const mrIid = opts.mrIid ?? process.env.CI_MERGE_REQUEST_IID;
-  const issueIid = opts.issueIid ?? process.env.CLAUDE_RESOURCE_ID;
+  
+  // Check if triggered via webhook with CLAUDE_RESOURCE_TYPE
+  const resourceType = process.env.CLAUDE_RESOURCE_TYPE;
+  const resourceId = process.env.CLAUDE_RESOURCE_ID;
+  
+  let mrIid = opts.mrIid ?? process.env.CI_MERGE_REQUEST_IID;
+  let issueIid = opts.issueIid;
+  
+  // If webhook triggered, use CLAUDE_RESOURCE_ID based on type
+  if (resourceType === "merge_request" && resourceId) {
+    mrIid = resourceId;
+  } else if (resourceType === "issue" && resourceId) {
+    issueIid = resourceId;
+  } else if (!mrIid && !issueIid && resourceId) {
+    // Fallback: if no type specified but resourceId exists, use it as issue
+    issueIid = resourceId;
+  }
   const host = opts.host ?? process.env.CI_SERVER_URL ?? "https://gitlab.com";
   const pipelineUrl = opts.pipelineUrl ?? process.env.CI_PIPELINE_URL;
 

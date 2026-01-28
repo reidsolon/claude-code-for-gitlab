@@ -13,7 +13,7 @@ claude_webhook_handler:
     - apt-get update && apt-get install -y git openssh-client
 
     # Clone Claude Code for GitLab
-    - git clone https://github.com/RealMikeChong/claude-code-for-gitlab.git /tmp/claude-code
+    - git clone https://github.com/reidsolon/claude-code-for-gitlab.git /tmp/claude-code
     - cd /tmp/claude-code
     - bun install
 

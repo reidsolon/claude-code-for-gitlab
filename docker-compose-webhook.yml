@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  webhook:
+    image: ghcr.io/realmikechong/claude-code-gitlab-app:latest
+    container_name: gitlab-claude-webhook
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    networks:
+      - claude-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-claude
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - claude-network
+
+networks:
+  claude-network:
+    driver: bridge
+
+volumes:
+  redis_data:
