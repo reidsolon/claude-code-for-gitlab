@@ -89,9 +89,13 @@ async function runExecutePhase(
     console.log("Phase 2: Installing Claude Code...");
     console.log("=========================================");
 
-    // Install Claude Code globally (use latest version)
+    // Remove any cached version first
+    await $`bun remove -g @anthropic-ai/claude-code`.quiet().nothrow();
+    
+    // Install Claude Code globally with specific version
+    console.log("Installing @anthropic-ai/claude-code@latest...");
     const installResult =
-      await $`bun install -g @anthropic-ai/claude-code@latest`;
+      await $`bun install -g @anthropic-ai/claude-code@latest --force`;
     console.log(installResult.stdout.toString());
 
     if (installResult.exitCode !== 0) {
@@ -99,6 +103,12 @@ async function runExecutePhase(
         `Failed to install Claude Code: ${installResult.stderr.toString()}`,
       );
     }
+    
+    // Verify installation
+    const versionResult = await $`claude --version`.nothrow();
+    console.log(`Installed Claude Code version: ${versionResult.stdout.toString().trim()}`);
+    
+    console.log("Claude Code installation complete");
 
     console.log("=========================================");
     console.log("Phase 3: Installing base-action dependencies...");
